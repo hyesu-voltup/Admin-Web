@@ -25,11 +25,15 @@ export async function login(payload: AuthLoginRequest): Promise<AuthLoginRespons
     });
   }
 
-  // 실서비스 연동 시 아래 주석 해제 후 Mock 블록 제거
-  // const { data } = await apiClient.post<AuthLoginResponse>(LOGIN_PATH, { nickname: trimmed });
-  // return data;
+  try {
+    const { data } = await apiClient.post<AuthLoginResponse>(LOGIN_PATH, {
+      nickname: trimmed,
+    });
+    return data;
+  } catch {
+    // Mock: 등록되지 않은 ID는 실패 (API 401 시 동일 메시지)
+  }
 
-  // Mock: 등록되지 않은 ID는 실패
   return Promise.reject({
     response: {
       data: {

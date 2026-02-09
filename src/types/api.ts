@@ -11,12 +11,13 @@ export interface ApiErrorResponse {
 
 /** C001~C015 시 커스텀 에러 (message 포함) */
 export class ApiClientError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string
-  ) {
+  /** 에러 코드 (C001~C015 등) */
+  readonly code: string;
+
+  constructor(code: string, message: string) {
     super(message);
     this.name = "ApiClientError";
+    this.code = code;
     Object.setPrototypeOf(this, ApiClientError.prototype);
   }
 }

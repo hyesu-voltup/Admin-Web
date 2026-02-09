@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -24,14 +24,19 @@ import type { AdminProduct } from "../types/api";
 import { createProduct, updateProduct } from "../api/products";
 import { useProducts, productsQueryKey } from "../hooks/useProducts";
 
-/** 폼 검증 스키마: 가격·재고는 0 이상 숫자만 */
+/** 폼 값 타입 (zod 스키마와 동일하게 유지) */
+export type ProductFormValues = {
+  name: string;
+  pointPrice: number;
+  stock: number;
+};
+
+/** 폼 검증 스키마: 가격·재고는 0 이상 숫자만 (Zod v4 호환) */
 const productFormSchema = z.object({
   name: z.string().min(1, "상품명을 입력해 주세요."),
   pointPrice: z.coerce.number().min(0, "가격은 0 이상이어야 합니다."),
   stock: z.coerce.number().min(0, "재고는 0 이상이어야 합니다."),
-});
-
-type ProductFormValues = z.infer<typeof productFormSchema>;
+}) satisfies z.ZodType<ProductFormValues>;
 
 const defaultValues: ProductFormValues = {
   name: "",
@@ -67,7 +72,7 @@ function ProductFormDialog({
     reset,
     formState: { errors },
   } = useForm<ProductFormValues>({
-    resolver: zodResolver(productFormSchema),
+    resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
     defaultValues,
   });
 

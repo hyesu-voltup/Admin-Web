@@ -63,14 +63,21 @@ export default function Orders() {
       setCancelTarget(null);
     },
     onError: (err: unknown) => {
-      const message =
-        err instanceof ApiClientError
-          ? err.message
-          : err &&
-              typeof err === "object" &&
-              "response" in err &&
-              (err as { response?: { data?: { message?: string } } }).response
-                ?.data?.message;
+      let message: string | undefined;
+      if (err instanceof ApiClientError) {
+        message = err.message;
+      } else if (
+        err &&
+        typeof err === "object" &&
+        "response" in err
+      ) {
+        const data = (err as { response?: { data?: { message?: unknown } } })
+          .response?.data;
+        message =
+          data && typeof data === "object" && data.message != null
+            ? String(data.message)
+            : undefined;
+      }
       toast.error(message ?? "주문 취소에 실패했습니다.");
     },
   });
