@@ -3,11 +3,11 @@ import { getUserId } from "../lib/authStorage";
 import { ApiClientError, isClientErrorCode } from "../types/api";
 
 /**
- * Base URL: VoltUpBE.md 기준 {BASE_URL}/api/v1
- * - env 미설정 시 상대 경로 /api/v1 (같은 오리진)
+ * Base URL: 항상 상대 경로 /api/v1
+ * - 배포(Vercel): 같은 오리진으로 요청 → 서버리스 함수가 API_BASE_URL로 프록시 (환경 변수는 서버만 사용)
+ * - 로컬 개발: Vite proxy가 /api를 백엔드로 전달 (.env.local의 VITE_API_BASE_URL, 브라우저에 노출 안 됨)
  */
-const origin = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-const baseURL = origin ? origin.replace(/\/$/, "") + "/api/v1" : "/api/v1";
+const baseURL = "/api/v1";
 
 /**
  * VoltUp API용 Axios 인스턴스
