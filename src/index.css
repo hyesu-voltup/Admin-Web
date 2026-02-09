@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Pretendard", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  line-height: 1.6;
+  font-weight: 400;
+  color: #191f28;
+  background-color: #f9fafb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button {
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, transform 0.15s ease;
+}
+button:focus-visible {
+  outline: 2px solid #E4FF30;
+  outline-offset: 2px;
+}
+
+/* 토스 스타일 유틸리티 */
+@layer components {
+  .btn-primary {
+    @apply min-h-[48px] rounded-2xl bg-highlight px-5 py-2.5 text-sm font-bold text-gray-900 shadow-sm transition-all hover:opacity-95 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100;
+  }
+  .btn-secondary {
+    @apply min-h-[48px] rounded-2xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 transition-all hover:bg-gray-50 active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-ghost {
+    @apply min-h-[44px] rounded-xl px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100;
+  }
+  .input-base {
+    @apply w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-400 transition-colors focus:border-highlight focus:outline-none focus:ring-2 focus:ring-highlight/30 disabled:opacity-50;
+  }
+  .shadow-card {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+  .section-title {
+    @apply text-xl font-bold text-gray-900;
+  }
+}
