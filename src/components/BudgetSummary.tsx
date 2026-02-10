@@ -30,13 +30,16 @@ function BudgetCardSkeleton() {
   );
 }
 
-/** 잔여 예산은 0 이상이어야 함 (이미 지급액보다 적게 설정 시 서버에서 C016) */
+/** 잔여 예산은 0 이상 (이미 지급액보다 적게 설정 시 서버 C016) */
 const ERROR_INVALID_REMAINING = "잔여 예산은 0 이상이어야 합니다.";
+/** C016: 이미 지급액보다 잔여를 적게 설정 불가 */
+const C016_MESSAGE = "이미 지급된 포인트보다 잔여 예산을 적게 설정할 수 없습니다.";
 
 /**
  * 일일 예산 조회 (필요 시 수정 버튼·다이얼로그)
  * - 대시보드: showEditButton=false, showSummaryCards=true (참여자 수·지급 포인트·잔여 예산 카드만)
  * - 예산 관리: showEditButton=true, showSummaryCards=false (카드 없이 예산 수정 버튼·다이얼로그만)
+ * - 예산 수정: remaining 입력 시 서버에서 totalLimit = totalGranted + remaining 설정, totalGranted는 불변. C016 시 별도 안내.
  */
 export default function BudgetSummary({
   showEditButton = true,
@@ -61,7 +64,8 @@ export default function BudgetSummary({
       );
     }
     return (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <BudgetCardSkeleton />
         <BudgetCardSkeleton />
         <BudgetCardSkeleton />
         <BudgetCardSkeleton />
@@ -105,7 +109,9 @@ export default function BudgetSummary({
     } catch (err) {
       const message =
         err instanceof ApiClientError
-          ? err.message
+          ? err.code === "C016"
+            ? C016_MESSAGE
+            : err.message
           : (err as { response?: { data?: { message?: string } } })?.response
               ?.data?.message;
       toast.error(message ?? "예산 수정에 실패했습니다.");
@@ -117,7 +123,7 @@ export default function BudgetSummary({
   return (
     <>
       {showSummaryCards && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader>
               <CardTitle>참여자 수</CardTitle>
@@ -136,6 +142,17 @@ export default function BudgetSummary({
             <CardContent>
               <p className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
                 {formatNumber(data?.totalGranted ?? 0)}
+                <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>오늘 발급 한도 (totalLimit)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                {formatNumber(data?.totalLimit ?? 0)}
                 <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
               </p>
             </CardContent>
@@ -166,14 +183,14 @@ export default function BudgetSummary({
           </div>
           <DialogContent open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogHeader>
-              <DialogTitle>잔여 예산 강제 설정</DialogTitle>
+              <DialogTitle>잔여 예산 설정</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               <label
                 htmlFor="remaining"
                 className="block text-sm font-medium text-gray-700"
               >
-                잔여 예산 (P)
+                설정할 잔여 예산 (P)
               </label>
               <input
                 id="remaining"
@@ -186,7 +203,7 @@ export default function BudgetSummary({
                 className="input-base"
               />
               <p className="text-xs text-gray-500">
-                ※ 이미 지급한 금액({formatNumber(data?.totalGranted ?? 0)}P)보다 적게 설정할 수 없습니다. (서버 검증)
+                ※ 입력한 잔여 예산(remaining)을 보내면, 오늘 룰렛 발급 가능 전체 포인트(totalLimit)가 지급액({formatNumber(data?.totalGranted ?? 0)}P) + remaining으로 설정됩니다. 지급액은 변경되지 않습니다. 
               </p>
             </div>
             <DialogFooter>
