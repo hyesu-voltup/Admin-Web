@@ -9,7 +9,6 @@ const MENU_ITEMS: { path: string; label: string }[] = [
   { path: "/budget", label: "예산 관리" },
   { path: "/admin/products", label: "상품 관리" },
   { path: "/admin/orders", label: "주문 내역" },
-  { path: "/admin/roulette/participations", label: "룰렛 기록" },
 ];
 
 /** 햄버거 메뉴 아이콘 (모바일용) */

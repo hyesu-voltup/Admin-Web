@@ -40,8 +40,10 @@ export interface Budget {
   budgetDate: string;
   /** 당일 누적 지급 포인트 */
   totalGranted: number;
-  /** 잔여 예산 (100,000 - totalGranted) */
+  /** 잔여 예산 */
   remaining: number;
+  /** 당일 룰렛 참여자 수 */
+  participantCount: number;
 }
 
 /** GET /api/v1/admin/orders 목록 한 건 */

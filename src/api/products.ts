@@ -57,3 +57,13 @@ export async function updateProduct(
   );
   return data;
 }
+
+/**
+ * 상품 소프트 삭제 (VoltUpBE: DELETE /api/v1/admin/products/{productId})
+ * - 삭제된 상품은 목록/조회에서 제외됨
+ * @param productId - 상품 ID
+ * @returns 204 No Content (성공), 404 상품 없음 또는 이미 삭제됨
+ */
+export async function deleteProduct(productId: number): Promise<void> {
+  await apiClient.delete(`${ADMIN_PRODUCTS_PATH}/${productId}`);
+}
