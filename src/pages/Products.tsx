@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -21,7 +21,7 @@ import {
 import { Skeleton } from "../components/ui/skeleton";
 import { ApiClientError } from "../types/api";
 import type { AdminProduct } from "../types/api";
-import { createProduct, updateProduct } from "../api/products";
+import { createProduct, updateProduct, deleteProduct } from "../api/products";
 import { useProducts, productsQueryKey } from "../hooks/useProducts";
 
 /** 폼 값 타입 (zod 스키마와 동일하게 유지) */
@@ -178,17 +178,44 @@ function ProductFormDialog({
   );
 }
 
+/** 정렬 기준 (상품ID순, 가격순, 재고순) */
+type ProductSortBy = "id" | "pointPrice" | "stock";
+
+const SORT_OPTIONS: { value: ProductSortBy; label: string }[] = [
+  { value: "id", label: "상품 ID순" },
+  { value: "pointPrice", label: "가격순" },
+  { value: "stock", label: "재고순" },
+];
+
 /**
  * 상품 관리 페이지 (README 관리자 API > 3. 상품)
- * - List: useQuery GET /api/v1/products, Table
+ * - List: useQuery GET /api/v1/products, Table, 정렬(상품ID·가격·재고)
  * - Form: Dialog + react-hook-form + zod (name, pointPrice >= 0, stock >= 0)
  * - 등록: POST /admin/products, 수정: PUT /admin/products/{productId}, 수정 시 기존 값 채움
  */
 export default function Products() {
   const queryClient = useQueryClient();
   const { data: products = [], isLoading, isError, error } = useProducts();
+  const [sortBy, setSortBy] = useState<ProductSortBy>("id");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<AdminProduct | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminProduct | null>(null);
+
+  /** 현재 정렬 기준으로 정렬된 목록 (원본 불변) */
+  const sortedProducts = useMemo(() => {
+    const copy = [...products];
+    copy.sort((a, b) => {
+      switch (sortBy) {
+        case "pointPrice":
+          return a.pointPrice - b.pointPrice;
+        case "stock":
+          return a.stock - b.stock;
+        default:
+          return a.id - b.id;
+      }
+    });
+    return copy;
+  }, [products, sortBy]);
 
   const createMutation = useMutation({
     mutationFn: createProduct,
@@ -228,6 +255,22 @@ export default function Products() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (productId: number) => deleteProduct(productId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productsQueryKey });
+      toast.success("상품이 삭제되었습니다.");
+      setDeleteTarget(null);
+    },
+    onError: (err: unknown) => {
+      toast.error(
+        err instanceof ApiClientError
+          ? err.message
+          : "상품 삭제에 실패했습니다."
+      );
+    },
+  });
+
   const handleOpenCreate = () => {
     setEditProduct(null);
     setDialogOpen(true);
@@ -236,6 +279,11 @@ export default function Products() {
   const handleOpenEdit = (product: AdminProduct) => {
     setEditProduct(product);
     setDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    deleteMutation.mutate(deleteTarget.id);
   };
 
   const handleSubmitForm = (
@@ -285,13 +333,31 @@ export default function Products() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="section-title">상품 관리</h2>
-        <button
-          type="button"
-          onClick={handleOpenCreate}
-          className="btn-primary w-full sm:w-auto"
-        >
-          상품 등록
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <label htmlFor="product-sort" className="text-sm font-medium text-gray-700">
+            정렬
+          </label>
+          <select
+            id="product-sort"
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as ProductSortBy)}
+            className="input-base w-auto min-w-[120px]"
+            aria-label="상품 정렬 기준 선택"
+          >
+            {SORT_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={handleOpenCreate}
+            className="btn-primary w-full sm:w-auto"
+          >
+            상품 등록
+          </button>
+        </div>
       </div>
       <div>
         <Table>
@@ -305,14 +371,14 @@ export default function Products() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.length === 0 ? (
+            {sortedProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-28 text-center text-gray-500">
                   등록된 상품이 없습니다.
                 </TableCell>
               </TableRow>
             ) : (
-              products.map((product) => (
+              sortedProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.id}</TableCell>
                   <TableCell>{product.name}</TableCell>
@@ -325,6 +391,13 @@ export default function Products() {
                       className="btn-ghost min-h-[44px] text-gray-700"
                     >
                       수정
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(product)}
+                      className="btn-ghost min-h-[44px] text-red-600 hover:text-red-700"
+                    >
+                      삭제
                     </button>
                   </TableCell>
                 </TableRow>
@@ -341,6 +414,37 @@ export default function Products() {
         onSubmitForm={handleSubmitForm}
         isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <DialogContent
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+      >
+        <DialogHeader>
+          <DialogTitle>상품 삭제</DialogTitle>
+        </DialogHeader>
+        <p className="text-gray-600">
+          {deleteTarget?.name}(ID: {deleteTarget?.id}) 상품을 삭제하시겠습니까?
+          삭제된 상품은 목록에서 제외됩니다.
+        </p>
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={() => setDeleteTarget(null)}
+            className="btn-secondary"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmDelete}
+            disabled={deleteMutation.isPending}
+            className="btn-primary min-w-[80px] text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            {deleteMutation.isPending ? "처리 중…" : "삭제"}
+          </button>
+        </DialogFooter>
+      </DialogContent>
     </div>
   );
 }

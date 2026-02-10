@@ -14,9 +14,10 @@ export async function getBudget(): Promise<Budget> {
 }
 
 /**
- * 오늘 예산 강제 설정 (VoltUpBE: PATCH /api/v1/admin/budget, Body: { totalGranted })
- * @param totalGranted - 강제 설정할 당일 총 지급액 (0 ~ 100,000)
+ * 오늘 잔여 예산 강제 설정 (VoltUpBE: PATCH /api/v1/admin/budget, Body: { remaining })
+ * - 당일 잔여 예산(remaining)을 강제 설정. 이미 지급액보다 적게 수정 시 서버에서 C016
+ * @param remaining - 강제 설정할 잔여 예산 (P)
  */
-export async function patchBudget(totalGranted: number): Promise<void> {
-  await apiClient.patch(BUDGET_PATH, { totalGranted });
+export async function patchBudget(remaining: number): Promise<void> {
+  await apiClient.patch(BUDGET_PATH, { remaining });
 }

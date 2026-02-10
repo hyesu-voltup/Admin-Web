@@ -30,31 +30,39 @@ function BudgetCardSkeleton() {
   );
 }
 
-/** 오늘 사용자가 이미 받아간 지급액보다 적게 설정할 수 없음 */
-const ERROR_LESS_THAN_GRANTED =
-  "오늘 사용자가 받아간 지급액보다 적게 설정할 수 없습니다.";
+/** 잔여 예산은 0 이상이어야 함 (이미 지급액보다 적게 설정 시 서버에서 C016) */
+const ERROR_INVALID_REMAINING = "잔여 예산은 0 이상이어야 합니다.";
 
 /**
  * 일일 예산 조회 (필요 시 수정 버튼·다이얼로그)
- * - 대시보드: showEditButton=false (간략 정보만)
- * - 예산 관리: showEditButton=true (오늘의 전체 예산 수정 가능, 검증: 설정값 >= 받아간 지급액)
+ * - 대시보드: showEditButton=false, showSummaryCards=true (참여자 수·지급 포인트·잔여 예산 카드만)
+ * - 예산 관리: showEditButton=true, showSummaryCards=false (카드 없이 예산 수정 버튼·다이얼로그만)
  */
 export default function BudgetSummary({
   showEditButton = true,
+  showSummaryCards = true,
 }: {
   showEditButton?: boolean;
+  /** false면 상단 요약 카드(참여자 수·지급 포인트·잔여 예산) 미표시 - 예산 관리 페이지용 */
+  showSummaryCards?: boolean;
 }) {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, error } = useBudget();
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [totalGrantedInput, setTotalGrantedInput] = useState("");
+  const [remainingInput, setRemainingInput] = useState("");
   const [isPatching, setIsPatching] = useState(false);
 
-  const currentGranted = data?.totalGranted ?? 0;
-
   if (isLoading) {
+    if (!showSummaryCards) {
+      return (
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-28" />
+        </div>
+      );
+    }
     return (
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <BudgetCardSkeleton />
         <BudgetCardSkeleton />
         <BudgetCardSkeleton />
       </div>
@@ -78,25 +86,21 @@ export default function BudgetSummary({
   }
 
   const handleOpenDialog = () => {
-    setTotalGrantedInput(String(data?.totalGranted ?? 0));
+    setRemainingInput(String(data?.remaining ?? 0));
     setDialogOpen(true);
   };
 
   const handleSubmitBudget = async () => {
-    const num = Number(totalGrantedInput.replace(/,/g, ""));
+    const num = Number(remainingInput.replace(/,/g, ""));
     if (Number.isNaN(num) || num < 0) {
-      toast.error("올바른 숫자를 입력해 주세요.");
-      return;
-    }
-    if (num < currentGranted) {
-      toast.error(ERROR_LESS_THAN_GRANTED);
+      toast.error(ERROR_INVALID_REMAINING);
       return;
     }
     setIsPatching(true);
     try {
       await patchBudget(num);
       await queryClient.invalidateQueries({ queryKey: budgetQueryKey });
-      toast.success("예산이 수정되었습니다.");
+      toast.success("잔여 예산이 수정되었습니다.");
       setDialogOpen(false);
     } catch (err) {
       const message =
@@ -112,30 +116,43 @@ export default function BudgetSummary({
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>오늘 사용자가 받아간 지급액</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-              {formatNumber(data?.totalGranted ?? 0)}
-              <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>잔여 예산</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tracking-tight text-highlight sm:text-3xl">
-              {formatNumber(data?.remaining ?? 0)}
-              <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {showSummaryCards && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>참여자 수</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                {formatNumber(data?.participantCount ?? 0)}
+                <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">명</span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>지급 포인트</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                {formatNumber(data?.totalGranted ?? 0)}
+                <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>잔여 예산</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold tracking-tight text-highlight sm:text-3xl">
+                {formatNumber(data?.remaining ?? 0)}
+                <span className="ml-1 text-base font-medium text-gray-500 sm:text-lg">P</span>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
       {showEditButton && (
         <>
           <div>
@@ -149,27 +166,27 @@ export default function BudgetSummary({
           </div>
           <DialogContent open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogHeader>
-              <DialogTitle>오늘의 전체 예산 수정</DialogTitle>
+              <DialogTitle>잔여 예산 강제 설정</DialogTitle>
             </DialogHeader>
             <div className="space-y-2">
               <label
-                htmlFor="totalGranted"
+                htmlFor="remaining"
                 className="block text-sm font-medium text-gray-700"
               >
-                오늘의 전체 예산 (P)
+                잔여 예산 (P)
               </label>
               <input
-                id="totalGranted"
+                id="remaining"
                 type="text"
                 inputMode="numeric"
-                value={totalGrantedInput}
-                onChange={(e) => setTotalGrantedInput(e.target.value)}
+                value={remainingInput}
+                onChange={(e) => setRemainingInput(e.target.value)}
                 placeholder="0"
                 disabled={isPatching}
                 className="input-base"
               />
               <p className="text-xs text-gray-500">
-                ※ 오늘 사용자가 받아간 지급액({formatNumber(currentGranted)}P)보다 적게 설정할 수 없습니다.
+                ※ 이미 지급한 금액({formatNumber(data?.totalGranted ?? 0)}P)보다 적게 설정할 수 없습니다. (서버 검증)
               </p>
             </div>
             <DialogFooter>

@@ -7,7 +7,6 @@ import Dashboard from "./pages/Dashboard";
 import Budget from "./pages/Budget";
 import Products from "./pages/Products";
 import Orders from "./pages/Orders";
-import Roulette from "./pages/Roulette";
 
 /**
  * 인증 필요 시 로그인 페이지로 리다이렉트하는 래퍼
@@ -37,7 +36,7 @@ function App() {
             <Route path="budget" element={<Budget />} />
             <Route path="admin/products" element={<Products />} />
             <Route path="admin/orders" element={<Orders />} />
-            <Route path="admin/roulette/participations" element={<Roulette />} />
+            <Route path="admin/roulette/participations" element={<Navigate to="/budget" replace />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
